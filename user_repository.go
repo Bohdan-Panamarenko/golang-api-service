@@ -18,6 +18,9 @@ func NewInMemoryUserStorage() *InMemoryUserStorage {
 }
 
 func (s *InMemoryUserStorage) Add(key string, user User) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	if s.storage[key].Email != "" {
 		return errors.New("Key '" + key + "' already exists")
 	}
@@ -27,6 +30,9 @@ func (s *InMemoryUserStorage) Add(key string, user User) error {
 }
 
 func (s *InMemoryUserStorage) Update(key string, user User) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	if s.storage[key].Email == "" {
 		return errors.New("Key '" + key + "' doesn't exist")
 	}
@@ -36,6 +42,9 @@ func (s *InMemoryUserStorage) Update(key string, user User) error {
 }
 
 func (s *InMemoryUserStorage) Get(key string) (user User, err error) {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
 	user, exists := s.storage[key]
 	if exists {
 		return user, nil
@@ -44,6 +53,9 @@ func (s *InMemoryUserStorage) Get(key string) (user User, err error) {
 }
 
 func (s *InMemoryUserStorage) Delete(key string) (user User, err error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	user, exists := s.storage[key]
 	if exists {
 		delete(s.storage, key)
