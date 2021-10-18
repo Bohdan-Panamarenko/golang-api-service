@@ -57,7 +57,7 @@ func (u *UserService) JWT(
 	}
 
 	if UserHasBan(user) {
-		writeResponse(w, 401, "user "+user.Email+" has ban due to '"+(*user.BanHistory)[len(*user.BanHistory)-1].WhyBanned+"'")
+		writeResponse(w, 401, "user "+user.Email+" has ban due to '"+user.BanHistory[len(user.BanHistory)-1].WhyBanned+"'")
 		return
 	}
 
@@ -100,7 +100,7 @@ func (j *JWTService) JWTAuth(
 		}
 
 		if UserHasBan(user) {
-			writeResponse(rw, 401, "user "+user.Email+" has ban due to '"+(*user.BanHistory)[len(*user.BanHistory)-1].WhyBanned+"'")
+			writeResponse(rw, 401, "user "+user.Email+" has ban due to '"+user.BanHistory[len(user.BanHistory)-1].WhyBanned+"'")
 			return
 		}
 

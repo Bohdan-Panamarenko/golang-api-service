@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"reflect"
 	"sync"
 )
 
@@ -18,7 +19,7 @@ func NewInMemoryUserStorage() *InMemoryUserStorage {
 }
 
 func (s *InMemoryUserStorage) Add(key string, user User) error {
-	if s.storage[key] != (User{}) {
+	if !reflect.DeepEqual(s.storage[key], User{}) {
 		return errors.New("Key '" + key + "' already exists")
 	}
 
@@ -27,7 +28,7 @@ func (s *InMemoryUserStorage) Add(key string, user User) error {
 }
 
 func (s *InMemoryUserStorage) Update(key string, user User) error {
-	if s.storage[key] == (User{}) {
+	if reflect.DeepEqual(s.storage[key], User{}) {
 		return errors.New("Key '" + key + "' doesn't exist")
 	}
 

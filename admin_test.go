@@ -128,7 +128,7 @@ func TestAdmin(t *testing.T) {
 		user := newUser()
 		userJwt, _ := j.GenearateJWT(user)
 
-		user.BanHistory = &[]Ban{}
+		user.BanHistory = []Ban{}
 		u.repository.Add(user.Email, user)
 		u.BanUser(user.Email, "admin@mail.com", "test")
 
@@ -164,7 +164,7 @@ func TestAdmin(t *testing.T) {
 		user := newUser()
 		userJwt, _ := j.GenearateJWT(user)
 
-		user.BanHistory = &[]Ban{}
+		user.BanHistory = []Ban{}
 		u.repository.Add(user.Email, user)
 		u.BanUser(user.Email, "admin@mail.com", "test")
 		u.UnbanUser(user.Email, "admin@mail.com")
@@ -255,7 +255,7 @@ func TestAdmin(t *testing.T) {
 		user := newUser()
 		// userJwt, _ := j.GenearateJWT(user)
 
-		user.BanHistory = &[]Ban{}
+		user.BanHistory = []Ban{}
 		u.repository.Add(user.Email, user)
 		u.BanUser(user.Email, "admin@mail.com", "test")
 
@@ -294,7 +294,7 @@ func TestAdmin(t *testing.T) {
 		user := newUser()
 		// userJwt, _ := j.GenearateJWT(user)
 
-		user.BanHistory = &[]Ban{}
+		// user.BanHistory = []Ban{}
 		u.repository.Add(user.Email, user)
 		u.BanUser(user.Email, "admin@mail.com", "test")
 		u.UnbanUser(user.Email, "anotheradmin@mail.com")
@@ -312,6 +312,8 @@ func TestAdmin(t *testing.T) {
 		)
 
 		resp := doRequest(req, err)
+
+		user, _ = u.repository.Get(user.Email)
 
 		assertResponse(t, http.StatusOK, InspectUser(user), resp)
 	})

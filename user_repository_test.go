@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -21,7 +22,7 @@ func TestUsers_Repository(t *testing.T) {
 
 		users.Add(user.Email, user)
 
-		if users.storage[user.Email] != user {
+		if !reflect.DeepEqual(users.storage[user.Email], user) {
 			t.Errorf("User %v has not been added", user.Email)
 		}
 
@@ -44,13 +45,13 @@ func TestUsers_Repository(t *testing.T) {
 
 		u, err := users.Get(user.Email)
 
-		if u != user || err != nil {
+		if !reflect.DeepEqual(u, user) || err != nil {
 			t.Errorf("Expected '%s' user and 'nil' error\n But get '%s' user and '%s' error",
 				user.Email, u.Email, err)
 		}
 
 		u, err = users.Get("wrongemail")
-		if u != (User{}) || err == nil {
+		if !reflect.DeepEqual(u, User{}) || err == nil {
 			t.Errorf("Expected empty user and `Key 'wrongemail' doesn't exist`\n"+
 				"But get '%s' user and '%s' error", u.Email, err)
 		}
@@ -77,7 +78,7 @@ func TestUsers_Repository(t *testing.T) {
 
 		actualUser, getErr := users.Get(oldUser.Email)
 
-		if actualUser == oldUser || actualUser != newUser || err != nil || getErr != nil {
+		if reflect.DeepEqual(actualUser, oldUser) || !reflect.DeepEqual(actualUser, newUser) || err != nil || getErr != nil {
 			t.Errorf("Expected %v user\nBut got %v user", newUser, actualUser)
 		}
 
@@ -100,7 +101,7 @@ func TestUsers_Repository(t *testing.T) {
 
 		users.Delete(user.Email)
 
-		if val, _ := users.Get(user.Email); val != (User{}) {
+		if val, _ := users.Get(user.Email); !reflect.DeepEqual(val, User{}) {
 			t.Errorf("Expected empty user\nBut got %v", val)
 		}
 

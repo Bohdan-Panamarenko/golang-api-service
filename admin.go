@@ -40,13 +40,13 @@ func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User
 		return
 	}
 
-	params, err := readParams(r)
+	email, err := readEmail(r)
 	if err != nil {
 		handleError(err, w)
 		return
 	}
 
-	user, err := s.repository.Get(params.Email)
+	user, err := s.repository.Get(email)
 	if err != nil {
 		handleError(err, w)
 		return
@@ -68,13 +68,13 @@ func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
 		return
 	}
 
-	params, err := readParams(r)
+	email, err := readEmail(r)
 	if err != nil {
 		handleError(err, w)
 		return
 	}
 
-	user, err := s.repository.Get(params.Email)
+	user, err := s.repository.Get(email)
 	if err != nil {
 		handleError(err, w)
 		return

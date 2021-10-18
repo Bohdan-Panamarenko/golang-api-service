@@ -23,11 +23,11 @@ type User struct {
 	PasswordDigest string
 	Role           Role
 	FavoriteCake   string
-	BanHistory     *[]Ban
+	BanHistory     []Ban
 }
 
 func UserHasBan(u User) bool {
-	if u.BanHistory == nil || len(*u.BanHistory) == 0 || (*u.BanHistory)[len(*u.BanHistory)-1].WhenUnbanned != 0 {
+	if u.BanHistory == nil || len(u.BanHistory) == 0 || (u.BanHistory)[len(u.BanHistory)-1].WhenUnbanned != 0 {
 		return false
 	}
 	return true
@@ -39,13 +39,11 @@ func (s *UserService) BanUser(key string, adminEmail string, reason string) erro
 		return err
 	}
 
-	if u.BanHistory == nil {
-		u.BanHistory = &[]Ban{}
-	} else if UserHasBan(u) {
+	if UserHasBan(u) {
 		return errors.New("user " + u.Email + " already have ban")
 	}
 
-	*u.BanHistory = append(*u.BanHistory, Ban{
+	u.BanHistory = append(u.BanHistory, Ban{
 		WhoBanned:  adminEmail,
 		WhenBanned: time.Now().UnixNano(),
 		WhyBanned:  reason,
@@ -69,12 +67,12 @@ func (s *UserService) UnbanUser(key string, adminEmail string) error {
 		return errors.New("user " + u.Email + " does not have any active bans")
 	}
 
-	lastBan := (*u.BanHistory)[len(*u.BanHistory)-1]
+	lastBan := u.BanHistory[len(u.BanHistory)-1]
 
 	lastBan.WhoUnbanned = adminEmail
 	lastBan.WhenUnbanned = time.Now().UnixNano()
 
-	(*u.BanHistory)[len(*u.BanHistory)-1] = lastBan
+	u.BanHistory[len(u.BanHistory)-1] = lastBan
 
 	err = s.repository.Update(u.Email, u)
 	if err != nil {
@@ -87,7 +85,7 @@ func (s *UserService) UnbanUser(key string, adminEmail string) error {
 func InspectUser(user User) string {
 	var response string = "user " + user.Email + " have next bans: \n"
 
-	for _, ban := range *user.BanHistory {
+	for _, ban := range user.BanHistory {
 		response += fmt.Sprintf("-- Banned %v by %s because '%s'.", ban.WhenBanned, ban.WhoBanned, ban.WhyBanned)
 		if ban.WhenUnbanned != 0 {
 			response += fmt.Sprintf(" Unbanned %v by %s.", ban.WhenUnbanned, ban.WhoUnbanned)
@@ -113,6 +111,18 @@ type UserRegisterParams struct {
 	Email        string `json:"email"`
 	Password     string `json:"password"`
 	FavoriteCake string `json:"favorite_cake"`
+}
+
+type EmailParams struct {
+	Email string `json:"email"`
+}
+
+type CakeParams struct {
+	Cake string `json:"favorite_cake"`
+}
+
+type PasswordParams struct {
+	Password string `json:"password"`
 }
 
 func validateRegisterParams(p *UserRegisterParams) error {
@@ -162,7 +172,7 @@ func validateCake(cake string) error {
 }
 
 func (u *UserService) Register(w http.ResponseWriter, r *http.Request) {
-	params, err := readParams(r)
+	params, err := readRegisterParams(r)
 	if err != nil {
 		handleError(err, w)
 		return
@@ -191,19 +201,19 @@ func (u *UserService) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u *UserService) UpdateFavoriteCakeHandler(w http.ResponseWriter, r *http.Request, user User) {
-	params, err := readParams(r)
+	cake, err := readCake(r)
 	if err != nil {
 		handleError(err, w)
 		return
 	}
 
-	if err := validateCake(params.FavoriteCake); err != nil {
+	if err := validateCake(cake); err != nil {
 		handleError(err, w)
 		return
 	}
 
 	newUser := user
-	newUser.FavoriteCake = params.FavoriteCake
+	newUser.FavoriteCake = cake
 
 	err = u.repository.Update(newUser.Email, newUser)
 	if err != nil {
@@ -215,19 +225,19 @@ func (u *UserService) UpdateFavoriteCakeHandler(w http.ResponseWriter, r *http.R
 }
 
 func (u *UserService) UpdateEmailHandler(w http.ResponseWriter, r *http.Request, user User) {
-	params, err := readParams(r)
+	email, err := readEmail(r)
 	if err != nil {
 		handleError(err, w)
 		return
 	}
 
-	if err := validateEmail(params.Email); err != nil {
+	if err := validateEmail(email); err != nil {
 		handleError(err, w)
 		return
 	}
 
 	newUser := user
-	newUser.Email = params.Email
+	newUser.Email = email
 
 	_, err = u.repository.Delete(user.Email)
 	if err != nil {
@@ -245,19 +255,19 @@ func (u *UserService) UpdateEmailHandler(w http.ResponseWriter, r *http.Request,
 }
 
 func (u *UserService) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request, user User) {
-	params, err := readParams(r)
+	password, err := readPassword(r)
 	if err != nil {
 		handleError(err, w)
 		return
 	}
 
-	if err := validatePassword(params.Password); err != nil {
+	if err := validatePassword(password); err != nil {
 		handleError(err, w)
 		return
 	}
 
 	newUser := user
-	newUser.PasswordDigest = string(md5.New().Sum([]byte(params.Password)))
+	newUser.PasswordDigest = string(md5.New().Sum([]byte(password)))
 
 	err = u.repository.Update(newUser.Email, newUser)
 	if err != nil {
@@ -273,7 +283,7 @@ func handleError(err error, w http.ResponseWriter) {
 	w.Write([]byte(err.Error()))
 }
 
-func readParams(r *http.Request) (*UserRegisterParams, error) {
+func readRegisterParams(r *http.Request) (*UserRegisterParams, error) {
 	params := &UserRegisterParams{}
 
 	err := json.NewDecoder(r.Body).Decode(params)
@@ -283,6 +293,42 @@ func readParams(r *http.Request) (*UserRegisterParams, error) {
 	}
 
 	return params, nil
+}
+
+func readEmail(r *http.Request) (string, error) {
+	email := &EmailParams{}
+
+	err := json.NewDecoder(r.Body).Decode(email)
+	if err != nil {
+		fmt.Println(err)
+		return "", errors.New("could not read params")
+	}
+
+	return email.Email, nil
+}
+
+func readPassword(r *http.Request) (string, error) {
+	password := &PasswordParams{}
+
+	err := json.NewDecoder(r.Body).Decode(password)
+	if err != nil {
+		fmt.Println(err)
+		return "", errors.New("could not read params")
+	}
+
+	return password.Password, nil
+}
+
+func readCake(r *http.Request) (string, error) {
+	cake := &CakeParams{}
+
+	err := json.NewDecoder(r.Body).Decode(cake)
+	if err != nil {
+		fmt.Println(err)
+		return "", errors.New("could not read params")
+	}
+
+	return cake.Cake, nil
 }
 
 func writeResponse(w http.ResponseWriter, status int, response string) {
