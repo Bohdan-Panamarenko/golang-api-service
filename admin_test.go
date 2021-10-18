@@ -59,7 +59,7 @@ func TestAdmin(t *testing.T) {
 
 		resp = doRequest(req, err)
 
-		assertResponse(t, 401, "try to acces superadmin api without superadmin rights", resp)
+		assertResponse(t, 401, "attempt to acces superadmin api without superadmin rights", resp)
 
 		if usr, _ := u.repository.Get(user.Email); usr.Role == adminRole {
 			t.Errorf("'"+user.Email+" expected to be not admin, but it was %s", usr.Role)
@@ -103,7 +103,7 @@ func TestAdmin(t *testing.T) {
 
 		req, err = http.NewRequest(http.MethodGet, adms.URL, prepareParams(t, Params{
 			"email": superadmin.Email,
-		})) // try to make superadmin not admin
+		})) // attempt to make superadmin not admin
 		req.Header.Add(
 			"Authorization",
 			"Bearer "+adminJwt,
@@ -111,7 +111,7 @@ func TestAdmin(t *testing.T) {
 
 		resp = doRequest(req, err)
 
-		assertResponse(t, 401, "try to acces superadmin api without superadmin rights", resp)
+		assertResponse(t, 401, "attempt to acces superadmin api without superadmin rights", resp)
 	})
 
 	t.Run("banned user tries to acces api", func(t *testing.T) {
@@ -223,7 +223,7 @@ func TestAdmin(t *testing.T) {
 
 		assertResponse(t, http.StatusOK, "user "+user.Email+" is banned now", resp)
 
-		resp = doRequest(req, err) // try to ban user again
+		resp = doRequest(req, err) // attempt to ban user again
 
 		assertResponse(t, 422, "user "+user.Email+" is already banned", resp)
 
@@ -232,7 +232,7 @@ func TestAdmin(t *testing.T) {
 			"reason": "test",
 		}
 
-		req, err = http.NewRequest(http.MethodPost, bans.URL, prepareParams(t, banParams)) // try to ban superadmin
+		req, err = http.NewRequest(http.MethodPost, bans.URL, prepareParams(t, banParams)) // attempt to ban superadmin
 		req.Header.Add(
 			"Authorization",
 			"Bearer "+adminJwt,
@@ -277,7 +277,7 @@ func TestAdmin(t *testing.T) {
 
 		assertResponse(t, http.StatusOK, "user "+user.Email+" is unbanned now", resp)
 
-		resp = doRequest(req, err) // try to unban user again
+		resp = doRequest(req, err) // attempt to unban user again
 
 		assertResponse(t, 422, "user "+user.Email+" does not have any active bans", resp)
 	})
@@ -416,7 +416,7 @@ func TestAdmin(t *testing.T) {
 
 		resp = doRequest(req, err)
 
-		assertResponse(t, 401, "try to acces superadmin api without superadmin rights", resp)
+		assertResponse(t, 401, "attempt to acces superadmin api without superadmin rights", resp)
 
 	})
 

@@ -19,24 +19,16 @@ func validateUserBanParams(p UserBanParams) error {
 	return nil
 }
 
-func isSuperadmin(u User, w http.ResponseWriter) bool {
+func isSuperadmin(u User) bool {
 	if u.Role != superadminRole {
-		writeResponse(w, 401, "try to acces superadmin api without superadmin rights")
 		return false
 	}
 	return true
 }
 
-// func isAdminSuperadmin(u User, w http.ResponseWriter) bool {
-// 	if u.Role != adminRole {
-// 		handleError(errors.New("try to acces admin api without admin or superadmin rights"), w)
-// 		return false
-// 	}
-// 	return true
-// }
-
 func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User) {
-	if !isSuperadmin(u, w) {
+	if !isSuperadmin(u) {
+		writeResponse(w, 401, "attempt to acces superadmin api without superadmin rights")
 		return
 	}
 
@@ -49,6 +41,11 @@ func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User
 	user, err := s.repository.Get(email)
 	if err != nil {
 		handleError(err, w)
+		return
+	}
+
+	if isSuperadmin(user) {
+		writeResponse(w, 401, "attempt to change superadmin rights")
 		return
 	}
 
@@ -64,7 +61,8 @@ func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User
 }
 
 func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
-	if !isSuperadmin(u, w) {
+	if !isSuperadmin(u) {
+		writeResponse(w, 401, "attempt to acces superadmin api without superadmin rights")
 		return
 	}
 
@@ -77,6 +75,11 @@ func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
 	user, err := s.repository.Get(email)
 	if err != nil {
 		handleError(err, w)
+		return
+	}
+
+	if isSuperadmin(user) {
+		writeResponse(w, 401, "attempt to change superadmin rights")
 		return
 	}
 
@@ -93,7 +96,7 @@ func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
 
 func validateAdminAction(w http.ResponseWriter, u User, target User) bool {
 	if (u.Role == adminRole || u.Role == superadminRole) && target.Role == userRole ||
-		u.Role == superadminRole && target.Role == adminRole {
+		u.Role == superadminRole && target.Role == adminRole && u.Email != target.Email {
 
 		return true
 	}
