@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"net/http"
@@ -16,7 +16,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.promoteUser)))
+		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.PromoteUser)))
 		defer func() {
 			adms.Close()
 		}()
@@ -70,7 +70,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.fireUser)))
+		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.FireUser)))
 		defer func() {
 			adms.Close()
 		}()
@@ -118,8 +118,8 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
-		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, getCakeHandler)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
+		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, GetCakeHandler)))
 		defer func() {
 			jwts.Close()
 			cks.Close()
@@ -154,8 +154,8 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
-		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, getCakeHandler)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
+		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, GetCakeHandler)))
 		defer func() {
 			jwts.Close()
 			cks.Close()
@@ -191,7 +191,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		bans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.banUserHandler)))
+		bans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.BanUserHandler)))
 		defer func() {
 			bans.Close()
 		}()
@@ -247,7 +247,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		unbans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.unbanUserHandler)))
+		unbans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.UnbanUserHandler)))
 		defer func() {
 			unbans.Close()
 		}()
@@ -286,7 +286,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.inspectUserHandler)))
+		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.InspectUserHandler)))
 		defer func() {
 			inspects.Close()
 		}()
@@ -322,7 +322,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.inspectUserHandler)))
+		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.InspectUserHandler)))
 		defer func() {
 			inspects.Close()
 		}()
@@ -349,7 +349,7 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.inspectUserHandler)))
+		inspects := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.InspectUserHandler)))
 		defer func() {
 			inspects.Close()
 		}()
@@ -376,8 +376,8 @@ func TestAdmin(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		bans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.banUserHandler)))
-		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.promoteUser)))
+		bans := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.BanUserHandler)))
+		adms := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.PromoteUser)))
 		defer func() {
 			bans.Close()
 		}()
@@ -429,19 +429,19 @@ func TestAdmin(t *testing.T) {
 		email := "superadmin@openware.com"
 		password := "12345678"
 
-		err := u.addSuperadmin()
+		err := u.AddSuperadmin()
 		if err.Error() != assertEmail {
 			t.Errorf("Expected %s but get %s", assertEmail, err.Error())
 		}
 
 		os.Setenv("CAKE_ADMIN_EMAIL", email)
-		err = u.addSuperadmin()
+		err = u.AddSuperadmin()
 		if err.Error() != assertPassword {
 			t.Errorf("Expected %s but get %s", assertEmail, err.Error())
 		}
 
 		os.Setenv("CAKE_ADMIN_PASSWORD", password)
-		err = u.addSuperadmin()
+		err = u.AddSuperadmin()
 		if err != nil {
 			t.Errorf(err.Error())
 		}

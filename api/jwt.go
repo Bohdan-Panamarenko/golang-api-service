@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"crypto/md5"
@@ -45,14 +45,14 @@ func (u *UserService) JWT(
 	params := &JWTParams{}
 	err := json.NewDecoder(r.Body).Decode(params)
 	if err != nil {
-		handleError(errors.New("could not read params"), w)
+		HandleError(errors.New("could not read params"), w)
 		return
 	}
 
 	passwordDigest := md5.New().Sum([]byte(params.Password))
 	user, err := u.repository.Get(params.Email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -62,13 +62,13 @@ func (u *UserService) JWT(
 	}
 
 	if string(passwordDigest) != user.PasswordDigest {
-		handleError(errors.New("invalid login params"), w)
+		HandleError(errors.New("invalid login params"), w)
 		return
 	}
 
 	token, err := jwtService.GenearateJWT(user)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -105,5 +105,14 @@ func (j *JWTService) JWTAuth(
 		}
 
 		h(rw, r, user)
+	}
+}
+
+func WrapJwt(
+	jwt *JWTService,
+	f func(http.ResponseWriter, *http.Request, *JWTService),
+) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		f(rw, r, jwt)
 	}
 }

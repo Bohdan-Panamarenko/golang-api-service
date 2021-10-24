@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"net/http"
@@ -13,8 +13,8 @@ func TestCake(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
-		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, getCakeHandler)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
+		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, GetCakeHandler)))
 		regs := httptest.NewServer(http.HandlerFunc(u.Register))
 		defer func() {
 			cks.Close()
@@ -58,9 +58,9 @@ func TestCake(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		regs := httptest.NewServer(http.HandlerFunc(u.Register))
-		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, getCakeHandler)))
+		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, GetCakeHandler)))
 		defer func() {
 			jwts.Close()
 			regs.Close()

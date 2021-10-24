@@ -1,9 +1,11 @@
-package main
+package api
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 )
 
 type UserBanParams struct {
@@ -19,32 +21,33 @@ func validateUserBanParams(p UserBanParams) error {
 	return nil
 }
 
-func isSuperadmin(u User) bool {
-	if u.Role != superadminRole {
-		return false
-	}
-	return true
+func IsSuperadmin(u User) bool {
+	return u.Role == superadminRole
 }
 
-func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User) {
-	if !isSuperadmin(u) {
+func IsAdmin(u User) bool {
+	return u.Role == adminRole
+}
+
+func (s *UserService) PromoteUser(w http.ResponseWriter, r *http.Request, u User) {
+	if !IsSuperadmin(u) {
 		writeResponse(w, 401, "attempt to acces superadmin api without superadmin rights")
 		return
 	}
 
 	email, err := readEmail(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	user, err := s.repository.Get(email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
-	if isSuperadmin(user) {
+	if IsSuperadmin(user) {
 		writeResponse(w, 401, "attempt to change superadmin rights")
 		return
 	}
@@ -53,32 +56,32 @@ func (s *UserService) promoteUser(w http.ResponseWriter, r *http.Request, u User
 
 	err = s.repository.Update(user.Email, user)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	writeResponse(w, http.StatusOK, "user "+user.Email+" is admin now")
 }
 
-func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
-	if !isSuperadmin(u) {
+func (s *UserService) FireUser(w http.ResponseWriter, r *http.Request, u User) {
+	if !IsSuperadmin(u) {
 		writeResponse(w, 401, "attempt to acces superadmin api without superadmin rights")
 		return
 	}
 
 	email, err := readEmail(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	user, err := s.repository.Get(email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
-	if isSuperadmin(user) {
+	if IsSuperadmin(user) {
 		writeResponse(w, 401, "attempt to change superadmin rights")
 		return
 	}
@@ -87,7 +90,7 @@ func (s *UserService) fireUser(w http.ResponseWriter, r *http.Request, u User) {
 
 	s.repository.Update(user.Email, user)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -105,23 +108,23 @@ func validateAdminAction(w http.ResponseWriter, u User, target User) bool {
 	return false
 }
 
-func (s *UserService) banUserHandler(w http.ResponseWriter, r *http.Request, u User) {
+func (s *UserService) BanUserHandler(w http.ResponseWriter, r *http.Request, u User) {
 	params := &UserBanParams{}
 	err := json.NewDecoder(r.Body).Decode(params)
 	if err != nil {
-		handleError(errors.New("could not read params"), w)
+		HandleError(errors.New("could not read params"), w)
 		return
 	}
 
 	err = validateUserBanParams(*params)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	target, err := s.repository.Get(params.Email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -130,34 +133,34 @@ func (s *UserService) banUserHandler(w http.ResponseWriter, r *http.Request, u U
 	}
 
 	if UserHasBan(target) {
-		handleError(errors.New("user "+target.Email+" is already banned"), w)
+		HandleError(errors.New("user "+target.Email+" is already banned"), w)
 		return
 	}
 
 	err = s.BanUser(params.Email, u.Email, params.Reason)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	writeResponse(w, http.StatusOK, "user "+target.Email+" is banned now")
 }
 
-func (s *UserService) unbanUserHandler(w http.ResponseWriter, r *http.Request, u User) {
+func (s *UserService) UnbanUserHandler(w http.ResponseWriter, r *http.Request, u User) {
 	params := &UserBanParams{}
 	err := json.NewDecoder(r.Body).Decode(params)
 	if err != nil {
-		handleError(errors.New("could not read params"), w)
+		HandleError(errors.New("could not read params"), w)
 	}
 
 	err = validateUserBanParams(*params)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 	}
 
 	target, err := s.repository.Get(params.Email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 	}
 
 	if !validateAdminAction(w, u, target) {
@@ -166,14 +169,14 @@ func (s *UserService) unbanUserHandler(w http.ResponseWriter, r *http.Request, u
 
 	err = s.UnbanUser(params.Email, u.Email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	writeResponse(w, http.StatusOK, "user "+target.Email+" is unbanned now")
 }
 
-func (s *UserService) inspectUserHandler(w http.ResponseWriter, r *http.Request, u User) {
+func (s *UserService) InspectUserHandler(w http.ResponseWriter, r *http.Request, u User) {
 	if u.Role != adminRole && u.Role != superadminRole {
 		writeResponse(w, 401, "not enough rights to performe this action")
 		return
@@ -182,13 +185,13 @@ func (s *UserService) inspectUserHandler(w http.ResponseWriter, r *http.Request,
 	email := r.URL.Query().Get("email")
 	err := validateEmail(email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	target, err := s.repository.Get(email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -201,4 +204,29 @@ func (s *UserService) inspectUserHandler(w http.ResponseWriter, r *http.Request,
 	response := InspectUser(target)
 
 	writeResponse(w, http.StatusOK, response)
+}
+
+func (s *UserService) AddSuperadmin() error {
+	superadminEmail, err := os.LookupEnv("CAKE_ADMIN_EMAIL")
+	if !err {
+		return errors.New("Undefined superadmin email")
+	}
+	superadminPassword, err := os.LookupEnv("CAKE_ADMIN_PASSWORD")
+	if !err {
+		return errors.New("Undefined superadmin password")
+	}
+
+	superadmin := User{
+		Email:          superadminEmail,
+		PasswordDigest: string(md5.New().Sum([]byte(superadminPassword))),
+		FavoriteCake:   "napoleon",
+		Role:           superadminRole,
+	}
+
+	addErr := s.repository.Add(superadmin.Email, superadmin)
+	if addErr != nil {
+		return addErr
+	}
+
+	return nil
 }

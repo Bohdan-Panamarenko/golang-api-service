@@ -1,10 +1,13 @@
-package main
+package logging
 
 import (
+	"api-service/api"
+	"bufio"
 	"bytes"
 	"errors"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -16,7 +19,15 @@ type logWriter struct {
 	response   bytes.Buffer
 }
 
-func (w *logWriter) writeHeader(status int) {
+func (w *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("hijack not supported")
+	}
+	return h.Hijack()
+}
+
+func (w *logWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
 	w.statusCode = status
 }
@@ -26,7 +37,7 @@ func (w *logWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p)
 }
 
-func logRequest(h http.HandlerFunc) http.HandlerFunc {
+func LogRequest(h http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		writer := &logWriter{
 			ResponseWriter: rw,
@@ -35,7 +46,7 @@ func logRequest(h http.HandlerFunc) http.HandlerFunc {
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println("Could not read request body", err)
-			handleError(errors.New("Could not read requst"), rw)
+			api.HandleError(errors.New("Could not read requst"), rw)
 
 			return
 		}

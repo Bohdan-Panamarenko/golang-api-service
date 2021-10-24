@@ -2,89 +2,58 @@ package main
 
 import (
 	"context"
-	"crypto/md5"
-	"errors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	"api-service/api"
+	"api-service/cake_websocket"
+	"api-service/logging"
+
 	"github.com/gorilla/mux"
 )
-
-func getCakeHandler(w http.ResponseWriter, r *http.Request, u User) {
-	w.Write([]byte(u.FavoriteCake))
-}
-
-func wrapJwt(
-	jwt *JWTService,
-	f func(http.ResponseWriter, *http.Request, *JWTService),
-) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		f(rw, r, jwt)
-	}
-}
-
-func (s *UserService) addSuperadmin() error {
-	superadminEmail, err := os.LookupEnv("CAKE_ADMIN_EMAIL")
-	if !err {
-		return errors.New("Undefined superadmin email")
-	}
-	superadminPassword, err := os.LookupEnv("CAKE_ADMIN_PASSWORD")
-	if !err {
-		return errors.New("Undefined superadmin password")
-	}
-
-	superadmin := User{
-		Email:          superadminEmail,
-		PasswordDigest: string(md5.New().Sum([]byte(superadminPassword))),
-		FavoriteCake:   "napoleon",
-		Role:           superadminRole,
-	}
-
-	addErr := s.repository.Add(superadmin.Email, superadmin)
-	if addErr != nil {
-		return addErr
-	}
-
-	return nil
-}
 
 func main() {
 	os.Setenv("CAKE_ADMIN_EMAIL", "superadmin@openware.com")
 	os.Setenv("CAKE_ADMIN_PASSWORD", "12345678")
 
+	hub := cake_websocket.NewHub()
+	go hub.Run()
+
 	r := mux.NewRouter()
 
-	users := NewInMemoryUserStorage()
-	userService := UserService{
-		repository: users,
-	}
+	users := api.NewInMemoryUserStorage()
+	userService := api.NewUserService(users)
 
-	userService.addSuperadmin()
+	userService.AddSuperadmin()
 
-	jwtService, err := NewJWTService("pubkey.rsa", "privkey.rsa")
+	jwtService, err := api.NewJWTService("pubkey.rsa", "privkey.rsa")
 	if err != nil {
 		panic(err)
 	}
 
-	r.HandleFunc("/cake", logRequest(jwtService.JWTAuth(users, getCakeHandler))).Methods(http.MethodGet)
-	r.HandleFunc("/user/me", logRequest(jwtService.JWTAuth(users, getCakeHandler))).Methods(http.MethodGet)
-	r.HandleFunc("/user/register", logRequest(userService.Register)).Methods(http.MethodPost)
-	r.HandleFunc("/user/favorite_cake", logRequest(jwtService.
+	r.HandleFunc("/cake", logging.LogRequest(jwtService.JWTAuth(users, api.GetCakeHandler))).Methods(http.MethodGet)
+	r.HandleFunc("/user/me", logging.LogRequest(jwtService.JWTAuth(users, api.GetCakeHandler))).Methods(http.MethodGet)
+	r.HandleFunc("/user/register", logging.LogRequest(userService.Register)).Methods(http.MethodPost)
+	r.HandleFunc("/user/favorite_cake", logging.LogRequest(jwtService.
 		JWTAuth(users, userService.UpdateFavoriteCakeHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/user/email", logRequest(jwtService.
+	r.HandleFunc("/user/email", logging.LogRequest(jwtService.
 		JWTAuth(users, userService.UpdateEmailHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/user/password", logRequest(jwtService.
+	r.HandleFunc("/user/password", logging.LogRequest(jwtService.
 		JWTAuth(users, userService.UpdatePasswordHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/user/jwt", logRequest(wrapJwt(jwtService, userService.JWT))).Methods(http.MethodPost)
+	r.HandleFunc("/user/jwt", logging.LogRequest(api.WrapJwt(jwtService, userService.JWT))).Methods(http.MethodPost)
 
-	r.HandleFunc("/admin/promote", logRequest(jwtService.JWTAuth(users, userService.promoteUser))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/fire", logRequest(jwtService.JWTAuth(users, userService.fireUser))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/ban", logRequest(jwtService.JWTAuth(users, userService.banUserHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/unban", logRequest(jwtService.JWTAuth(users, userService.unbanUserHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/inspect", logRequest(jwtService.JWTAuth(users, userService.inspectUserHandler))).Methods(http.MethodGet)
+	r.HandleFunc("/admin/promote", logging.LogRequest(jwtService.JWTAuth(users, userService.PromoteUser))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/fire", logging.LogRequest(jwtService.JWTAuth(users, userService.FireUser))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/ban", logging.LogRequest(jwtService.JWTAuth(users, userService.BanUserHandler))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/unban", logging.LogRequest(jwtService.JWTAuth(users, userService.UnbanUserHandler))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/inspect", logging.LogRequest(jwtService.JWTAuth(users, userService.InspectUserHandler))).Methods(http.MethodGet)
+
+	r.HandleFunc("/ws", jwtService.JWTAuth(users, cake_websocket.WsHandshakeHandler(hub)))
+
+	go hub.SendMessages(5 * time.Second)
 
 	srv := http.Server{
 		Addr:    ":8080",

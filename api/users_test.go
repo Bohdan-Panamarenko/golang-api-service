@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -139,7 +139,7 @@ func TestUsers_JWT(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		ts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		ts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		defer ts.Close()
 
 		params := map[string]interface{}{
@@ -156,7 +156,7 @@ func TestUsers_JWT(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		defer func() {
 			jwts.Close()
 		}()
@@ -177,7 +177,7 @@ func TestUsers_JWT(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		defer func() {
 			jwts.Close()
 		}()
@@ -199,8 +199,8 @@ func TestUsers_JWT(t *testing.T) {
 		u := newTestUserService()
 		j := newTestJwtService(t)
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
-		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, getCakeHandler)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
+		cks := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, GetCakeHandler)))
 		upds := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.UpdateFavoriteCakeHandler)))
 		defer func() {
 			jwts.Close()
@@ -255,7 +255,7 @@ func TestUsers_JWT(t *testing.T) {
 			t.FailNow()
 		}
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		regs := httptest.NewServer(http.HandlerFunc(u.Register))
 		upds := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.UpdateEmailHandler)))
 		defer func() {
@@ -317,7 +317,7 @@ func TestUsers_JWT(t *testing.T) {
 			t.FailNow()
 		}
 
-		jwts := httptest.NewServer(http.HandlerFunc(wrapJwt(j, u.JWT)))
+		jwts := httptest.NewServer(http.HandlerFunc(WrapJwt(j, u.JWT)))
 		regs := httptest.NewServer(http.HandlerFunc(u.Register))
 		upds := httptest.NewServer(http.HandlerFunc(j.JWTAuth(u.repository, u.UpdatePasswordHandler)))
 		defer func() {

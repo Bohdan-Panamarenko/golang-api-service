@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"crypto/md5"
@@ -125,6 +125,12 @@ type PasswordParams struct {
 	Password string `json:"password"`
 }
 
+func NewUserService(u UserRepository) *UserService {
+	return &UserService{
+		repository: u,
+	}
+}
+
 func validateRegisterParams(p *UserRegisterParams) error {
 	err := validateEmail(p.Email)
 	if err != nil {
@@ -174,12 +180,12 @@ func validateCake(cake string) error {
 func (u *UserService) Register(w http.ResponseWriter, r *http.Request) {
 	params, err := readRegisterParams(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	if err := validateRegisterParams(params); err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -193,7 +199,7 @@ func (u *UserService) Register(w http.ResponseWriter, r *http.Request) {
 
 	err = u.repository.Add(params.Email, newUser)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -203,12 +209,12 @@ func (u *UserService) Register(w http.ResponseWriter, r *http.Request) {
 func (u *UserService) UpdateFavoriteCakeHandler(w http.ResponseWriter, r *http.Request, user User) {
 	cake, err := readCake(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	if err := validateCake(cake); err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -217,7 +223,7 @@ func (u *UserService) UpdateFavoriteCakeHandler(w http.ResponseWriter, r *http.R
 
 	err = u.repository.Update(newUser.Email, newUser)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -227,12 +233,12 @@ func (u *UserService) UpdateFavoriteCakeHandler(w http.ResponseWriter, r *http.R
 func (u *UserService) UpdateEmailHandler(w http.ResponseWriter, r *http.Request, user User) {
 	email, err := readEmail(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	if err := validateEmail(email); err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -241,13 +247,13 @@ func (u *UserService) UpdateEmailHandler(w http.ResponseWriter, r *http.Request,
 
 	_, err = u.repository.Delete(user.Email)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	err = u.repository.Add(newUser.Email, newUser)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -257,12 +263,12 @@ func (u *UserService) UpdateEmailHandler(w http.ResponseWriter, r *http.Request,
 func (u *UserService) UpdatePasswordHandler(w http.ResponseWriter, r *http.Request, user User) {
 	password, err := readPassword(r)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	if err := validatePassword(password); err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
@@ -271,14 +277,14 @@ func (u *UserService) UpdatePasswordHandler(w http.ResponseWriter, r *http.Reque
 
 	err = u.repository.Update(newUser.Email, newUser)
 	if err != nil {
-		handleError(err, w)
+		HandleError(err, w)
 		return
 	}
 
 	writeResponse(w, http.StatusOK, "password changed")
 }
 
-func handleError(err error, w http.ResponseWriter) {
+func HandleError(err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnprocessableEntity)
 	w.Write([]byte(err.Error()))
 }
@@ -334,4 +340,8 @@ func readCake(r *http.Request) (string, error) {
 func writeResponse(w http.ResponseWriter, status int, response string) {
 	w.WriteHeader(status)
 	w.Write([]byte(response))
+}
+
+func GetCakeHandler(w http.ResponseWriter, r *http.Request, u User) {
+	w.Write([]byte(u.FavoriteCake))
 }
