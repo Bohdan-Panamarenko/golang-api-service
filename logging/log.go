@@ -12,14 +12,14 @@ import (
 	"time"
 )
 
-type logWriter struct {
+type LogWriter struct {
 	http.ResponseWriter
 
-	statusCode int
-	response   bytes.Buffer
+	StatusCode int
+	Response   bytes.Buffer
 }
 
-func (w *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+func (w *LogWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	h, ok := w.ResponseWriter.(http.Hijacker)
 	if !ok {
 		return nil, nil, errors.New("hijack not supported")
@@ -27,19 +27,19 @@ func (w *logWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return h.Hijack()
 }
 
-func (w *logWriter) WriteHeader(status int) {
+func (w *LogWriter) WriteHeader(status int) {
 	w.ResponseWriter.WriteHeader(status)
-	w.statusCode = status
+	w.StatusCode = status
 }
 
-func (w *logWriter) Write(p []byte) (int, error) {
-	w.response.Write(p)
+func (w *LogWriter) Write(p []byte) (int, error) {
+	w.Response.Write(p)
 	return w.ResponseWriter.Write(p)
 }
 
 func LogRequest(h http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		writer := &logWriter{
+		writer := &LogWriter{
 			ResponseWriter: rw,
 		}
 
@@ -59,10 +59,10 @@ func LogRequest(h http.HandlerFunc) http.HandlerFunc {
 		log.Printf(
 			"PATH: %s -> %d. Finished in %v.\n\tParams: %s\n\tResponse: %s",
 			r.URL.Path,
-			writer.statusCode,
+			writer.StatusCode,
 			done,
 			string(body),
-			writer.response.String(),
+			writer.Response.String(),
 		)
 	}
 }

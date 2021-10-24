@@ -24,6 +24,10 @@ type Hub struct {
 	unregister chan *Client
 }
 
+func (h *Hub) SendMessage(msg string) {
+	h.broadcast <- []byte(msg)
+}
+
 func (h *Hub) SendMessages(d time.Duration) {
 	for {
 		h.broadcast <- []byte("Hello world!")

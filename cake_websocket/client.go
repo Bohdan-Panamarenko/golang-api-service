@@ -133,15 +133,9 @@ func (c *Client) writePump() {
 
 // serveWs handles websocket requests from the peer.
 func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	_, ok := w.(http.Hijacker)
-	if !ok {
-		log.Println("-->", "server does not support hijack")
-		return
-	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("-->", err)
+		log.Println(err)
 		return
 	}
 
@@ -154,7 +148,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	go client.readPump()
 }
 
-func WsHandshakeHandler(hub *Hub) api.ProtectedHandler {
+func WsHandler(hub *Hub) api.ProtectedHandler {
 	return func(w http.ResponseWriter, r *http.Request, u api.User) {
 		if !api.IsSuperadmin(u) && !api.IsAdmin(u) {
 			api.HandleError(errors.New("attempt to acces admin api without admin or superadmin rights"), w)

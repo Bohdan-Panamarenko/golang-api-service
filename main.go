@@ -11,6 +11,7 @@ import (
 	"api-service/api"
 	"api-service/cake_websocket"
 	"api-service/logging"
+	"api-service/rabbitMQ"
 
 	"github.com/gorilla/mux"
 )
@@ -34,26 +35,29 @@ func main() {
 		panic(err)
 	}
 
+	jobs := make(chan rabbitMQ.BrockerMessage, 10)
+
+	go rabbitMQ.RunSender(10, jobs)
+	go rabbitMQ.RunReciever(hub)
+
 	r.HandleFunc("/cake", logging.LogRequest(jwtService.JWTAuth(users, api.GetCakeHandler))).Methods(http.MethodGet)
 	r.HandleFunc("/user/me", logging.LogRequest(jwtService.JWTAuth(users, api.GetCakeHandler))).Methods(http.MethodGet)
-	r.HandleFunc("/user/register", logging.LogRequest(userService.Register)).Methods(http.MethodPost)
+	r.HandleFunc("/user/register", rabbitMQ.LogRequest(jobs, logging.LogRequest(userService.Register))).Methods(http.MethodPost)
 	r.HandleFunc("/user/favorite_cake", logging.LogRequest(jwtService.
 		JWTAuth(users, userService.UpdateFavoriteCakeHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/user/email", logging.LogRequest(jwtService.
-		JWTAuth(users, userService.UpdateEmailHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/user/password", logging.LogRequest(jwtService.
-		JWTAuth(users, userService.UpdatePasswordHandler))).Methods(http.MethodPost)
+	r.HandleFunc("/user/email", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.
+		JWTAuth(users, userService.UpdateEmailHandler)))).Methods(http.MethodPost)
+	r.HandleFunc("/user/password", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.
+		JWTAuth(users, userService.UpdatePasswordHandler)))).Methods(http.MethodPost)
 	r.HandleFunc("/user/jwt", logging.LogRequest(api.WrapJwt(jwtService, userService.JWT))).Methods(http.MethodPost)
 
-	r.HandleFunc("/admin/promote", logging.LogRequest(jwtService.JWTAuth(users, userService.PromoteUser))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/fire", logging.LogRequest(jwtService.JWTAuth(users, userService.FireUser))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/ban", logging.LogRequest(jwtService.JWTAuth(users, userService.BanUserHandler))).Methods(http.MethodPost)
-	r.HandleFunc("/admin/unban", logging.LogRequest(jwtService.JWTAuth(users, userService.UnbanUserHandler))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/promote", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.JWTAuth(users, userService.PromoteUser)))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/fire", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.JWTAuth(users, userService.FireUser)))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/ban", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.JWTAuth(users, userService.BanUserHandler)))).Methods(http.MethodPost)
+	r.HandleFunc("/admin/unban", rabbitMQ.LogRequest(jobs, logging.LogRequest(jwtService.JWTAuth(users, userService.UnbanUserHandler)))).Methods(http.MethodPost)
 	r.HandleFunc("/admin/inspect", logging.LogRequest(jwtService.JWTAuth(users, userService.InspectUserHandler))).Methods(http.MethodGet)
 
-	r.HandleFunc("/ws", jwtService.JWTAuth(users, cake_websocket.WsHandshakeHandler(hub)))
-
-	go hub.SendMessages(5 * time.Second)
+	r.HandleFunc("/ws", jwtService.JWTAuth(users, cake_websocket.WsHandler(hub)))
 
 	srv := http.Server{
 		Addr:    ":8080",
