@@ -6,6 +6,8 @@ package cake_websocket
 
 import (
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Hub maintains the set of active clients and broadcasts messages to the
@@ -22,6 +24,9 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	// Connections number metric
+	numOfConnections prometheus.Gauge
 }
 
 func (h *Hub) SendMessage(msg string) {
@@ -35,12 +40,13 @@ func (h *Hub) SendMessages(d time.Duration) {
 	}
 }
 
-func NewHub() *Hub {
+func NewHub(metrics prometheus.Gauge) *Hub {
 	return &Hub{
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		broadcast:        make(chan []byte),
+		register:         make(chan *Client),
+		unregister:       make(chan *Client),
+		clients:          make(map[*Client]bool),
+		numOfConnections: metrics,
 	}
 }
 
@@ -49,10 +55,12 @@ func (h *Hub) Run() {
 		select {
 		case client := <-h.register:
 			h.clients[client] = true
+			h.numOfConnections.Inc()
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
+				h.numOfConnections.Dec()
 			}
 		case message := <-h.broadcast:
 			for client := range h.clients {

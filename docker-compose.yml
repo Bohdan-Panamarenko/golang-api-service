@@ -9,5 +9,12 @@ services:
             - "5672:5672"
             - "15672:15672"
 
+    prometheus:
+        network_mode: host
+        image: prom/prometheus
+        volumes:
+            - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
 volumes:
     rabbitmq_data:
+
